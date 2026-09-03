@@ -1,0 +1,36 @@
+name: Bot-created test PR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump version on a new branch
+        id: bump
+        run: |
+          BRANCH="bot-pr/test-$(date +%s)"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH"
+          echo "0.1.$(date +%s)" > VERSION.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: bump version (bot test PR)"
+          git push origin "$BRANCH"
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "Bot test PR: verify workflow approval gate" \
+            --body "Opened automatically by the bot-pr workflow using GITHUB_TOKEN, to test the 'Require approval for workflow runs' setting for bot-created PRs." \
+            --head "${{ steps.bump.outputs.branch }}" \
+            --base main
